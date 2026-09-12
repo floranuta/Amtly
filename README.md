@@ -1,4 +1,4 @@
-# 🇩🇪 Amtly
+# <img src="assets/germany-flag.svg" width="30" height="20" alt="German flag"> Amtly
 
 ### Germany, made simpler.
 
@@ -287,4 +287,4 @@ People shouldn't need to understand an entire administrative system just to unde
 
 **Describe your situation. Understand your options. Take the next step.**
 
-# Amtly — Germany, made simpler. 🇩🇪but its not 
+# Amtly — Germany, made simpler. <img src="assets/germany-flag.svg" width="30" height="20" alt="German flag">
