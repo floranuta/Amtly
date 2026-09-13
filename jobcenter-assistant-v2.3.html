@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Amtspost — Klarheit für jeden Brief</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f6f1e6;
+    --paper-raised: #fffdf8;
+    --ink: #26241d;
+    --ink-soft: #6b6656;
+    --line: #ddd5c0;
+    --stamp: #a4342a;
+    --stamp-soft: #f2e2de;
+    --seal: #4c6650;
+    --seal-soft: #e6ede4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--paper);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(38,36,29,0.05) 1px, transparent 0);
+    background-size: 22px 22px;
+    color: var(--ink);
+    margin: 0;
+    padding: 48px 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .sheet {
+    width: 100%;
+    max-width: 560px;
+  }
+  .masthead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 14px;
+    margin-bottom: 28px;
+  }
+  .masthead h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 27px;
+    font-weight: 500;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .masthead .ref {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+  .lede {
+    font-size: 15px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+    margin: 0 0 30px;
+    max-width: 46ch;
+  }
+  .panel {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 0 rgba(38,36,29,0.03);
+  }
+  .field-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 7px;
+    display: block;
+  }
+  input[type="password"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    font-size: 13.5px;
+    font-family: 'IBM Plex Mono', monospace;
+    background: var(--paper);
+    margin-bottom: 6px;
+  }
+  input[type="password"]:focus { outline: none; border-color: var(--ink); }
+  .hint {
+    font-size: 12px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    margin: 0 0 22px;
+  }
+  .dropzone {
+    border: 1.5px dashed var(--line);
+    border-radius: 3px;
+    padding: 30px 16px;
+    text-align: center;
+    cursor: pointer;
+    color: var(--ink-soft);
+    font-size: 14px;
+    transition: border-color .15s, background-color .15s;
+  }
+  .dropzone.dragover { border-color: var(--stamp); background: var(--stamp-soft); }
+  .dropzone img {
+    max-width: 100%;
+    max-height: 200px;
+    border: 1px solid var(--line);
+    margin-bottom: 10px;
+  }
+  .go-btn {
+    width: 100%;
+    background: var(--ink);
+    color: var(--paper-raised);
+    border: none;
+    border-radius: 2px;
+    padding: 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    margin-top: 18px;
+    transition: transform .1s ease;
+  }
+  .go-btn:hover:not(:disabled) { transform: translateY(-1px); }
+  .go-btn:disabled { background: #c9c4b4; cursor: not-allowed; }
+  .status-line {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--seal);
+    margin-top: 12px;
+    min-height: 16px;
+  }
+  .status-line.error { color: var(--stamp); }
+
+  #resultPanel {
+    display: none;
+    opacity: 0;
+    transform: translateY(6px);
+    animation: none;
+  }
+  #resultPanel.show {
+    display: block;
+    animation: unseal .5s ease forwards;
+  }
+  @keyframes unseal {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .stamp-tag {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 5px 10px;
+    border: 1px solid var(--stamp);
+    color: var(--stamp);
+    border-radius: 2px;
+    margin-bottom: 18px;
+    transform: rotate(-1deg);
+  }
+  .row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .datum .k, .field-block .k {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .datum .v {
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    font-weight: 500;
+    color: var(--stamp);
+  }
+  .field-block .v {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .draft-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+  }
+  textarea {
+    width: 100%;
+    min-height: 240px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    font-size: 13.5px;
+    font-family: 'IBM Plex Mono', monospace;
+    line-height: 1.6;
+    resize: vertical;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .copy-btn {
+    margin-top: 12px;
+    background: transparent;
+    border: 1px solid var(--ink);
+    color: var(--ink);
+    border-radius: 2px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .copy-btn:hover { background: var(--ink); color: var(--paper-raised); }
+  .copy-btn.copied { border-color: var(--seal); color: var(--seal); }
+
+  .footnote {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    margin-top: 26px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .footnote strong { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="masthead">
+    <h1>Amtspost</h1>
+    <span class="ref">Az. DEMO/2026</span>
+  </div>
+  <p class="lede">Brief hochladen — Frist, Anliegen und einen fertigen Antwortentwurf erhalten, bevor die Frist zum Problem wird.</p>
+
+  <div class="panel">
+    <span class="field-label">OpenAI API-Key</span>
+    <input type="password" id="apiKey" placeholder="sk-...">
+    <p class="hint">Bleibt nur im Browser, wird nirgendwo gespeichert.</p>
+
+    <span class="field-label">Sprache der Erklärung</span>
+    <select id="langSelect" style="width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:2px; font-size:13.5px; font-family:'Inter',sans-serif; background:var(--paper); margin-bottom:20px;">
+      <option value="Deutsch">Deutsch</option>
+      <option value="Русский" selected>Русский</option>
+      <option value="Українська">Українська</option>
+      <option value="English">English</option>
+      <option value="Türkçe">Türkçe</option>
+      <option value="العربية">العربية</option>
+      <option value="فارسی">فارسی</option>
+    </select>
+
+    <span class="field-label">Brief</span>
+    <div class="dropzone" id="drop">
+      <div id="dropText">Foto (JPG/PNG) oder PDF hierher ziehen, oder klicken</div>
+      <img id="preview" style="display:none">
+    </div>
+    <input type="file" id="fileInput" accept="image/*,application/pdf" style="display:none">
+
+    <button class="go-btn" id="runBtn" disabled>Brief verarbeiten</button>
+    <div class="status-line" id="status"></div>
+  </div>
+
+  <div class="panel" id="resultPanel">
+    <span class="stamp-tag" id="typeBadge">—</span>
+    <div class="field-block" style="margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--line);">
+      <div class="k">Was der Brief bedeutet</div>
+      <div class="v" id="explanation" style="font-family:'Inter',sans-serif; font-size:14.5px; line-height:1.55;">—</div>
+    </div>
+    <div class="row2">
+      <div class="datum">
+        <div class="k">Frist</div>
+        <div class="v" id="deadline">—</div>
+      </div>
+      <div class="field-block">
+        <div class="k">Verlangt wird</div>
+        <div class="v" id="action">—</div>
+      </div>
+    </div>
+    <span class="draft-label">Antwortentwurf (Deutsch, für die Behörde)</span>
+    <textarea id="draft"></textarea>
+    <button class="copy-btn" id="copyBtn">In Zwischenablage kopieren</button>
+    <button class="copy-btn" id="resetBtn" style="margin-left:10px;">Neues Dokument</button>
+  </div>
+
+  <p class="footnote">
+    <strong>Anonymisierung.</strong> Namen, Adressen und Aktenzeichen werden vor dem Senden an das Modell durch Platzhalter ersetzt und im Ergebnis wieder eingesetzt.
+  </p>
+</div>
+
+<script>
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('fileInput');
+const preview = document.getElementById('preview');
+const dropText = document.getElementById('dropText');
+const runBtn = document.getElementById('runBtn');
+const statusEl = document.getElementById('status');
+const apiKeyEl = document.getElementById('apiKey');
+const copyBtn = document.getElementById('copyBtn');
+const resultPanel = document.getElementById('resultPanel');
+
+let base64Image = null;
+let mimeType = null;
+
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+drop.addEventListener('drop', (e) => {
+  e.preventDefault();
+  drop.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+async function handleFile(file) {
+  const isPdf = (file.type === 'application/pdf') || file.name.toLowerCase().endsWith('.pdf');
+
+  if (isPdf) {
+    dropText.textContent = 'PDF wird gelesen …';
+    dropText.style.display = 'block';
+    preview.style.display = 'none';
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+      const pdfData = atob(dataUrl.split(',')[1]);
+      const bytes = new Uint8Array(pdfData.length);
+      for (let i = 0; i < pdfData.length; i++) bytes[i] = pdfData.charCodeAt(i);
+
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+      const pngDataUrl = canvas.toDataURL('image/png');
+      base64Image = pngDataUrl.split(',')[1];
+      mimeType = 'image/png';
+      preview.src = pngDataUrl;
+      preview.style.display = 'block';
+      dropText.style.display = 'none';
+      checkReady();
+    } catch (err) {
+      dropText.textContent = 'Fehler beim Lesen des PDFs: ' + err.message;
+      dropText.style.display = 'block';
+    }
+    return;
+  }
+
+  mimeType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = () => {
+    base64Image = reader.result.split(',')[1];
+    preview.src = reader.result;
+    preview.style.display = 'block';
+    dropText.style.display = 'none';
+    checkReady();
+  };
+  reader.readAsDataURL(file);
+}
+
+apiKeyEl.addEventListener('input', checkReady);
+function checkReady() {
+  runBtn.disabled = !(base64Image && apiKeyEl.value.trim());
+}
+
+function anonymize(text) {
+  const map = {};
+  let counter = 0;
+  let masked = text;
+  function replaceAll(regex, label) {
+    masked = masked.replace(regex, (match) => {
+      counter++;
+      const token = '[[' + label + '_' + counter + ']]';
+      map[token] = match;
+      return token;
+    });
+  }
+  replaceAll(/\b\d{2}\.\d{2}\.\d{4}\b/g, 'DATE');
+  replaceAll(/\b[A-Z]{2,4}[-\s]?\d{6,12}\b/g, 'AKTENZEICHEN');
+  replaceAll(/\b\d{5}\s+[A-ZÄÖÜ][a-zäöüß]+\b/g, 'PLZ_ORT');
+  replaceAll(/\b[A-ZÄÖÜ][a-zäöüß]+(?:straße|str\.|weg|allee|platz)\s?\d{1,4}\b/gi, 'ADRESSE');
+  replaceAll(/\b[A-ZÄÖÜ][a-zäöüß]+\s[A-ZÄÖÜ][a-zäöüß]+\b/g, 'NAME');
+  return { masked, map };
+}
+
+function restore(text, map) {
+  let restored = text;
+  for (const token in map) restored = restored.split(token).join(map[token]);
+  return restored;
+}
+
+const SYSTEM_PROMPT = `Du bist ein Assistent, der deutsche Behördenbriefe (insbesondere vom Jobcenter) fuer Menschen liest, die mit deutscher Buerokratie nicht vertraut sind.
+
+Beispiele fuer typische Briefe und wie sie einzuordnen sind:
+
+1. "Anhoerung nach Paragraph 24 SGB X" — das Jobcenter plant eine Entscheidung (z.B. Leistungskuerzung) und gibt der Person Gelegenheit zur Stellungnahme. Frist: meist 2-4 Wochen. Erforderliche Aktion: schriftliche Stellungnahme oder Widerspruch der Sachlage.
+
+2. "Aufforderung zur Mitwirkung nach Paragraph 60 SGB I" — das Jobcenter fordert fehlende Unterlagen (Kontoauszuege, Mietvertrag, Verdienstbescheinigung). Frist: meist 2-3 Wochen. Erforderliche Aktion: Unterlagen einreichen, sonst droht Leistungsversagung nach Paragraph 66 SGB I.
+
+3. "Einladung zum persoenlichen Gespraech" — Termin bei einer Sachbearbeiterin/einem Sachbearbeiter. Frist: der genannte Termin selbst. Erforderliche Aktion: erscheinen oder rechtzeitig verschieben, sonst Sanktionsgefahr.
+
+4. "Bescheid" (z.B. Bewilligungsbescheid, Ablehnungsbescheid) — eine bereits getroffene Entscheidung. Frist: Widerspruchsfrist ist ein Monat nach Zugang. Erforderliche Aktion: nur wenn Widerspruch gewuenscht ist, schriftlich und fristgerecht einlegen.
+
+Analysiere den folgenden (anonymisierten) Brieftext. Antworte ausschliesslich als JSON mit exakt diesen Feldern:
+{
+  "typ": "kurze Bezeichnung des Brieftyps, auf Deutsch",
+  "erklaerung": "2-3 einfache Saetze, die erklaeren was der Brief bedeutet und warum er wichtig ist — in der Sprache {{LANG}}, verstaendlich fuer jemanden ohne Behoerdenerfahrung",
+  "frist": "Datum oder Frist im Format wie im Brief angegeben, oder 'keine Frist angegeben'",
+  "aktion": "kurze, klare Beschreibung was die Person tun muss, auf Deutsch",
+  "antwortentwurf": "ein hoeflicher, formeller Antwortentwurf AUF DEUTSCH (wird an eine deutsche Behoerde geschickt, muss deshalb deutsch bleiben unabhaengig von der gewaehlten Erklaerungssprache), mit Platzhaltern wie [[NAME_1]] dort wo persoenliche Daten stehen wuerden, bereit zum Ausfuellen"
+}`;
+
+runBtn.addEventListener('click', async () => {
+  const apiKey = apiKeyEl.value.trim();
+  statusEl.textContent = 'Lese Brief …';
+  statusEl.classList.remove('error');
+  runBtn.disabled = true;
+  resultPanel.classList.remove('show');
+
+  try {
+    const extractResp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Gib ausschliesslich den vollstaendigen Text dieses Briefs als Klartext zurueck, ohne Kommentar.' },
+            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } }
+          ]
+        }]
+      })
+    });
+    const extractData = await extractResp.json();
+    if (!extractResp.ok) throw new Error(extractData.error?.message || 'OpenAI-Fehler beim Lesen des Bilds');
+    const rawText = extractData.choices[0].message.content;
+
+    statusEl.textContent = 'Anonymisiere personenbezogene Daten …';
+    const { masked, map } = anonymize(rawText);
+
+    statusEl.textContent = 'Erstelle Antwortentwurf …';
+    const langChoice = document.getElementById('langSelect').value;
+    const promptWithLang = SYSTEM_PROMPT.replace('{{LANG}}', langChoice);
+    const analyzeResp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: promptWithLang },
+          { role: 'user', content: 'Brieftext:\n' + masked }
+        ],
+        response_format: { type: 'json_object' }
+      })
+    });
+    const analyzeData = await analyzeResp.json();
+    if (!analyzeResp.ok) throw new Error(analyzeData.error?.message || 'OpenAI-Fehler bei der Analyse');
+    const result = JSON.parse(analyzeData.choices[0].message.content);
+    const finalDraft = restore(result.antwortentwurf, map);
+
+    document.getElementById('typeBadge').textContent = result.typ;
+    const explEl = document.getElementById('explanation');
+    explEl.textContent = result.erklaerung;
+    explEl.dir = (langChoice === 'العربية' || langChoice === 'فارسی') ? 'rtl' : 'ltr';
+    document.getElementById('deadline').textContent = result.frist;
+    document.getElementById('action').textContent = result.aktion;
+    document.getElementById('draft').value = finalDraft;
+    resultPanel.classList.add('show');
+    statusEl.textContent = 'Fertig.';
+  } catch (err) {
+    statusEl.textContent = 'Fehler: ' + err.message;
+    statusEl.classList.add('error');
+  } finally {
+    runBtn.disabled = false;
+  }
+});
+
+copyBtn.addEventListener('click', () => {
+  const draft = document.getElementById('draft');
+  draft.select();
+  document.execCommand('copy');
+  copyBtn.textContent = 'Kopiert ✓';
+  copyBtn.classList.add('copied');
+  setTimeout(() => { copyBtn.textContent = 'In Zwischenablage kopieren'; copyBtn.classList.remove('copied'); }, 1800);
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  base64Image = null;
+  mimeType = null;
+  fileInput.value = '';
+  preview.style.display = 'none';
+  preview.src = '';
+  dropText.textContent = 'Foto (JPG/PNG) oder PDF hierher ziehen, oder klicken';
+  dropText.style.display = 'block';
+  statusEl.textContent = '';
+  statusEl.classList.remove('error');
+  resultPanel.classList.remove('show');
+  checkReady();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+</script>
+</body>
+</html>
